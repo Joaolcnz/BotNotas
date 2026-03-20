@@ -5,9 +5,11 @@ export const getCoupons = async () => {
   return data;
 };
 
-export const uploadCoupon = async (file: File) => {
+export const uploadCoupons = async (files: File[]) => {
   const formData = new FormData();
-  formData.append('file', file);
+  files.forEach((file) => {
+    formData.append('file', file);
+  });
   const { data } = await apiClient.post('/coupons', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
