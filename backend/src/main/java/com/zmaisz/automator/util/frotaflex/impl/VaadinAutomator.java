@@ -9,6 +9,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,6 +79,7 @@ public class VaadinAutomator implements FrotaFlexService {
                     coupon.setStatus(CouponAttachmentStatus.ERROR);
                     log.error("Exception attaching note {} for group {}", noteId, group.getId(), e);
                 } finally {
+                    coupon.setProcessedAt(LocalDateTime.now());
                     try {
                         Files.deleteIfExists(filePath);
                     } catch (IOException ignored) {
