@@ -1,0 +1,12 @@
+# Ignore all contents of backend-api
+backend-api/*
+# But keep the .gitkeep file
+!backend-api/.gitkeep
+
+# Common ignores for the whole project
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
