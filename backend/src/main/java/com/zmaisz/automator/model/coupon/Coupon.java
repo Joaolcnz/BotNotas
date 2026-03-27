@@ -1,5 +1,7 @@
 package com.zmaisz.automator.model.coupon;
 
+import java.time.LocalDateTime;
+
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.ParamDef;
@@ -45,5 +47,11 @@ public class Coupon {
     @ManyToOne
     @JoinColumn(name = "group_id", nullable = false)
     private UserGroup group;
+
+    @Column(name = "uploaded_at", nullable = false, updatable = false)
+    private LocalDateTime uploadedAt = LocalDateTime.now();
+
+    @Column(name = "processed_at")
+    private LocalDateTime processedAt;
 
 }

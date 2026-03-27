@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8089/api',
+  baseURL: 'https://bot-api.astraviontech.com.br/api',
   headers: {
     'Content-Type': 'application/json',
   },

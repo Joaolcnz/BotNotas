@@ -1,13 +1,12 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, FolderOpen, Play, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
-import { uploadCoupon } from '@/api/coupons';
+import { uploadCoupons } from '@/api/coupons';
 import { useToast } from '@/hooks/use-toast';
 
 export default function BotPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [dirSelected, setDirSelected] = useState(false);
-  const [processes, setProcesses] = useState(1);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,27 +26,22 @@ export default function BotPage() {
 
   const handleStart = async () => {
     if (files.length === 0) {
-      toast({ title: 'Erro', description: 'Selecione um diretório primeiro.', variant: 'destructive' });
+      toast({ title: 'Erro', description: 'Selecione as notas primeiro.', variant: 'destructive' });
       return;
     }
 
     setRunning(true);
     setProgress({ current: 0, total: files.length });
 
-    // Process files in batches based on selected process count
-    const batchSize = processes;
-    for (let i = 0; i < files.length; i += batchSize) {
-      const batch = files.slice(i, i + batchSize);
-      const promises = batch.map((file) => uploadCoupon(file).catch(() => null));
-      await Promise.all(promises);
-      setProgress((prev) => ({
-        ...prev,
-        current: Math.min(prev.current + batch.length, files.length),
-      }));
+    try {
+      await uploadCoupons(files);
+      setProgress({ current: files.length, total: files.length });
+      toast({ title: 'Concluído', description: `${files.length} notas processadas com sucesso.` });
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Falha ao processar as notas.', variant: 'destructive' });
+    } finally {
+      setRunning(false);
     }
-
-    setRunning(false);
-    toast({ title: 'Concluído', description: `${files.length} notas processadas com sucesso.` });
   };
 
   return (
@@ -73,11 +67,9 @@ export default function BotPage() {
               ref={fileInputRef}
               type="file"
               multiple
+              accept="image/*"
               className="hidden"
               onChange={handleFilesChange}
-              // @ts-ignore - webkitdirectory is not in types
-              webkitdirectory=""
-              directory=""
             />
             <button
               onClick={handleSelectDir}
@@ -85,7 +77,7 @@ export default function BotPage() {
               className="w-full h-12 rounded-xl bg-accent border border-border text-foreground font-medium text-sm hover:bg-accent/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <FolderOpen className="w-4 h-4" />
-              {dirSelected ? 'Diretório selecionado' : 'Selecionar diretório'}
+              {dirSelected ? 'Notas selecionadas' : 'Selecionar notas'}
             </button>
 
             {dirSelected && (
@@ -95,30 +87,10 @@ export default function BotPage() {
                 className="flex items-center gap-2 text-sm text-success"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>{files.length} arquivo(s) encontrado(s)</span>
+                <span>{files.length} arquivo(s) selecionado(s)</span>
               </motion.div>
             )}
 
-            {/* Process Selector */}
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">Processos paralelos</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 3, 4].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setProcesses(n)}
-                    disabled={running}
-                    className={`h-10 rounded-lg text-sm font-medium transition-all border ${
-                      processes === n
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/20'
-                    } disabled:opacity-50`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             {/* Start Button */}
             <button
@@ -170,7 +142,7 @@ export default function BotPage() {
 
             {/* FrotaFlex Button */}
             <a
-              href="https://frotaflex.com.br"
+              href="https://zmaisz.frotaflex.com.br/"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full h-10 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-foreground/20 transition-colors flex items-center justify-center gap-2"
