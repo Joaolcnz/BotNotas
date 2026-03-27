@@ -11,7 +11,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building Docker images...'
-                bat 'docker-compose build'
+                bat 'docker-compose build --no-cache'
             }
         }
 
