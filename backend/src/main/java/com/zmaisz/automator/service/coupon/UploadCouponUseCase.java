@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,16 +14,22 @@ import com.zmaisz.automator.model.coupon.Coupon;
 import com.zmaisz.automator.model.coupon.CouponAttachmentStatus;
 import com.zmaisz.automator.model.user.User;
 import com.zmaisz.automator.model.user.UserContext;
+import com.zmaisz.automator.model.user.usergroup.UserGroup;
 import com.zmaisz.automator.repository.coupon.CouponRepository;
 import com.zmaisz.automator.util.frotaflex.FrotaFlexService;
 
 @Service
 public class UploadCouponUseCase {
 
+    private final String baseStorageDir;
     private final CouponRepository couponRepository;
     private final FrotaFlexService frotaFlexService;
 
-    public UploadCouponUseCase(CouponRepository couponRepository, FrotaFlexService frotaFlexService) {
+    public UploadCouponUseCase(
+            @Value("${coupons.storage.base-dir}") String baseStorageDir,
+            CouponRepository couponRepository,
+            FrotaFlexService frotaFlexService) {
+        this.baseStorageDir = baseStorageDir;
         this.couponRepository = couponRepository;
         this.frotaFlexService = frotaFlexService;
     }
@@ -30,8 +37,12 @@ public class UploadCouponUseCase {
     public List<Coupon> execute(List<MultipartFile> couponsFiles) throws Exception {
         List<CouponUploadDTO> couponsToUpload = new ArrayList<>();
         User user = UserContext.getUser();
+        UserGroup group = user.getGroup();
 
-        Path tempDir = Files.createTempDirectory("coupons-upload-");
+        Path groupDir = Path.of(baseStorageDir, String.valueOf(group.getId()));
+        if (!Files.exists(groupDir)) {
+            Files.createDirectories(groupDir);
+        }
 
         for (MultipartFile multipartFile : couponsFiles) {
             String originalFilename = multipartFile.getOriginalFilename();
@@ -39,7 +50,7 @@ public class UploadCouponUseCase {
                 continue;
             }
 
-            Path filePath = tempDir.resolve(originalFilename);
+            Path filePath = groupDir.resolve(originalFilename);
             multipartFile.transferTo(filePath.toFile());
 
             String code = extractCode(originalFilename);
@@ -57,7 +68,9 @@ public class UploadCouponUseCase {
         List<Coupon> savedCoupons = couponRepository
                 .saveAll(couponsToUpload.stream().map(CouponUploadDTO::getCoupon).toList());
 
-        frotaFlexService.uploadCoupons(couponsToUpload, user.getGroup());
+        for (CouponUploadDTO dto : couponsToUpload) {
+            frotaFlexService.enqueueFile(group, dto.getFile().toPath(), dto.getCoupon().getId());
+        }
 
         return savedCoupons;
     }
