@@ -102,6 +102,11 @@ public class VaadinAutomator implements FrotaFlexService {
         }
     }
 
+    @Override
+    public String getGroupExecutorStatus(Long groupId) {
+        return executors.containsKey(groupId) && !executors.get(groupId).isShutdown() ? "EXECUTANDO" : "PAUSADO";
+    }
+
     private class GroupWorker implements Runnable {
         private final UserGroup group;
         private final BlockingQueue<CouponJob> queue;

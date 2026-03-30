@@ -12,4 +12,6 @@ public interface FrotaFlexService {
 
     void resumeGroup(UserGroup group);
 
+    String getGroupExecutorStatus(Long groupId);
+
 }
