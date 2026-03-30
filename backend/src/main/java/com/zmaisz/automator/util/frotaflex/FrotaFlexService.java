@@ -8,4 +8,8 @@ public interface FrotaFlexService {
 
     void enqueueFile(UserGroup group, Path filePath, Long couponId);
 
+    void pauseGroup(Long groupId);
+
+    void resumeGroup(UserGroup group);
+
 }

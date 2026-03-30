@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.zmaisz.automator.model.coupon.Coupon;
@@ -35,9 +37,12 @@ import lombok.extern.slf4j.Slf4j;
 public class VaadinAutomator implements FrotaFlexService {
 
     private final CouponRepository couponRepository;
+    private final String baseStorageDir;
 
-    public VaadinAutomator(CouponRepository couponRepository) {
+    public VaadinAutomator(CouponRepository couponRepository,
+            @Value("${coupons.storage.base-dir}") String baseStorageDir) {
         this.couponRepository = couponRepository;
+        this.baseStorageDir = baseStorageDir;
     }
 
     private final Map<Long, BlockingQueue<CouponJob>> queues = new ConcurrentHashMap<>();
@@ -58,6 +63,45 @@ public class VaadinAutomator implements FrotaFlexService {
         queues.get(groupId).offer(new CouponJob(couponId, filePath));
     }
 
+    @Override
+    public void pauseGroup(Long groupId) {
+        BlockingQueue<CouponJob> queue = queues.remove(groupId);
+        ExecutorService executor = executors.remove(groupId);
+
+        if (queue != null && executor != null) {
+            queue.clear();
+            queue.offer(new CouponJob(-1L, null));
+            executor.shutdown();
+        }
+    }
+
+    @Override
+    public void resumeGroup(UserGroup group) {
+        Long groupId = group.getId();
+        Path groupDir = Path.of(baseStorageDir, String.valueOf(groupId));
+        
+        if (!Files.exists(groupDir) || !Files.isDirectory(groupDir)) {
+            return;
+        }
+
+        List<Coupon> pendingCoupons = couponRepository.findByGroupIdAndStatus(groupId, CouponAttachmentStatus.PENDING);
+        
+        try (java.util.stream.Stream<Path> stream = Files.list(groupDir)) {
+            stream.forEach(filePath -> {
+                String filename = filePath.getFileName().toString();
+                int dotIndex = filename.lastIndexOf(".");
+                String code = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+                
+                pendingCoupons.stream()
+                        .filter(c -> c.getCode().equals(code))
+                        .findFirst()
+                        .ifPresent(c -> enqueueFile(group, filePath, c.getId()));
+            });
+        } catch (IOException e) {
+            log.error("Failed to read directory {} while resuming group {}", groupDir, groupId, e);
+        }
+    }
+
     private class GroupWorker implements Runnable {
         private final UserGroup group;
         private final BlockingQueue<CouponJob> queue;
@@ -74,6 +118,11 @@ public class VaadinAutomator implements FrotaFlexService {
                 while (!Thread.currentThread().isInterrupted()) {
                     // Wait for a job, timeout after 5 minutes to close connection
                     CouponJob job = queue.poll(5, TimeUnit.MINUTES);
+
+                    if (job != null && job.couponId().equals(-1L)) {
+                        log.info("Worker gracefully paused for group {}", group.getId());
+                        break;
+                    }
 
                     if (job == null) {
                         // Idle timeout
