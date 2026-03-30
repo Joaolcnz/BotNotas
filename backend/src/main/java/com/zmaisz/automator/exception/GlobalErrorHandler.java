@@ -109,6 +109,6 @@ public class GlobalErrorHandler {
 		ErrorResponseDTO errorResponse = new ErrorResponseDTO(
 				LocalDateTime.now(),
 				"O tamanho máximo de upload é de 100MB e 10 arquivos por upload.");
-		return new ResponseEntity<>(errorResponse, HttpStatus.PAYLOAD_TOO_LARGE);
+		return new ResponseEntity<>(errorResponse, HttpStatus.CONTENT_TOO_LARGE);
 	}
 }
