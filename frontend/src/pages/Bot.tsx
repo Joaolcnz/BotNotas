@@ -21,8 +21,6 @@ export default function BotPage() {
       } catch (err) {}
     };
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleSelectDir = () => {
