@@ -34,8 +34,16 @@ export default function BotPage() {
     setProgress({ current: 0, total: files.length });
 
     try {
-      await uploadCoupons(files);
-      setProgress({ current: files.length, total: files.length });
+      const batchSize = 10;
+      let processed = 0;
+      
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        await uploadCoupons(batch);
+        processed += batch.length;
+        setProgress({ current: processed, total: files.length });
+      }
+      
       toast({ title: 'Concluído', description: `${files.length} notas processadas com sucesso.` });
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao processar as notas.', variant: 'destructive' });
