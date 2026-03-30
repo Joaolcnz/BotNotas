@@ -10,13 +10,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
-import com.zmaisz.automator.dto.coupon.CouponUploadDTO;
 import com.zmaisz.automator.model.coupon.Coupon;
 import com.zmaisz.automator.model.coupon.CouponAttachmentStatus;
 import com.zmaisz.automator.model.user.usergroup.UserGroup;
@@ -35,76 +40,125 @@ public class VaadinAutomator implements FrotaFlexService {
         this.couponRepository = couponRepository;
     }
 
+    private final Map<Long, BlockingQueue<CouponJob>> queues = new ConcurrentHashMap<>();
+    private final Map<Long, ExecutorService> executors = new ConcurrentHashMap<>();
+
+    private record CouponJob(Long couponId, Path filePath) {}
+
     @Override
-    public void uploadCoupons(List<CouponUploadDTO> coupons, UserGroup group) {
-        if (coupons == null || coupons.isEmpty()) {
-            return;
+    public void enqueueFile(UserGroup group, Path filePath, Long couponId) {
+        Long groupId = group.getId();
+        queues.computeIfAbsent(groupId, k -> new LinkedBlockingQueue<>());
+        executors.computeIfAbsent(groupId, k -> {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            executor.submit(new GroupWorker(group, queues.get(groupId)));
+            return executor;
+        });
+
+        queues.get(groupId).offer(new CouponJob(couponId, filePath));
+    }
+
+    private class GroupWorker implements Runnable {
+        private final UserGroup group;
+        private final BlockingQueue<CouponJob> queue;
+
+        public GroupWorker(UserGroup group, BlockingQueue<CouponJob> queue) {
+            this.group = group;
+            this.queue = queue;
         }
 
-        if (group == null) {
-            log.error("No group provided for uploading coupons");
-            updateAllToError(coupons);
-            return;
-        }
-        String username = group.getFrotaflexUser();
-        String password = group.getFrotaflexPassword();
+        @Override
+        public void run() {
+            FrotaFlexClient client = null;
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    // Wait for a job, timeout after 5 minutes to close connection
+                    CouponJob job = queue.poll(5, TimeUnit.MINUTES);
 
-        if (username == null || password == null || username.isEmpty() || password.isEmpty()) {
-            log.error("Group {} missing FrotaFlex credentials", group.getId());
-            updateAllToError(coupons);
-            return;
-        }
-
-        try (FrotaFlexClient client = new FrotaFlexClient(username, password)) {
-            if (!client.login()) {
-                log.error("Failed to login to FrotaFlex for group {}", group.getId());
-                updateAllToError(coupons);
-                return;
-            }
-
-            for (CouponUploadDTO dto : coupons) {
-                Coupon coupon = dto.getCoupon();
-                Path filePath = dto.getFile().toPath();
-                String noteId = coupon.getCode();
-
-                try {
-                    boolean success = client.attachNote(noteId, filePath);
-                    if (success) {
-                        coupon.setStatus(CouponAttachmentStatus.ATTACHED);
-                    } else {
-                        coupon.setStatus(CouponAttachmentStatus.ERROR);
-                        log.warn("Failed to attach note {} for group {}", noteId, group.getId());
+                    if (job == null) {
+                        // Idle timeout
+                        if (client != null) {
+                            client.close();
+                            client = null;
+                            log.info("Idle timeout for group {}, FrotaFlex connection closed.", group.getId());
+                        }
+                        continue;
                     }
-                } catch (Exception e) {
-                    coupon.setStatus(CouponAttachmentStatus.ERROR);
-                    log.error("Exception attaching note {} for group {}", noteId, group.getId(), e);
-                } finally {
-                    coupon.setProcessedAt(LocalDateTime.now());
-                    try {
-                        Files.deleteIfExists(filePath);
-                    } catch (IOException ignored) {
-                    }
-                }
 
-                couponRepository.save(coupon);
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+                    // Process job
+                    if (client == null) {
+                        try {
+                            client = new FrotaFlexClient(group.getFrotaflexUser(), group.getFrotaflexPassword());
+                            if (!client.login()) {
+                                log.error("Failed to login for group {}", group.getId());
+                                updateToErrorAndCleanup(job.couponId, job.filePath);
+                                client.close();
+                                client = null;
+                                continue;
+                            }
+                        } catch (IOException e) {
+                            log.error("Network error during login for group {}", group.getId(), e);
+                            updateToErrorAndCleanup(job.couponId, job.filePath);
+                            if (client != null) client.close();
+                            client = null;
+                            continue;
+                        }
+                    }
+
+                    processSingleCoupon(client, job.couponId, job.filePath, group);
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                if (client != null) client.close();
             }
-        } catch (Exception e) {
-            log.error("Unexpected error during FrotaFlex batch upload", e);
-            updateAllToError(coupons);
         }
     }
 
-    private void updateAllToError(List<CouponUploadDTO> coupons) {
-        for (CouponUploadDTO dto : coupons) {
-            Coupon coupon = dto.getCoupon();
+    private void processSingleCoupon(FrotaFlexClient client, Long couponId, Path filePath, UserGroup group) {
+        Coupon coupon = couponRepository.findById(couponId).orElse(null);
+        if (coupon == null) {
+            log.warn("Coupon {} not found", couponId);
+            deleteQuietly(filePath);
+            return;
+        }
+
+        try {
+            boolean success = client.attachNote(coupon.getCode(), filePath);
+            if (success) {
+                coupon.setStatus(CouponAttachmentStatus.ATTACHED);
+            } else {
+                coupon.setStatus(CouponAttachmentStatus.ERROR);
+                log.warn("Failed to attach note {} for group {}", coupon.getCode(), group.getId());
+            }
+        } catch (Exception e) {
             coupon.setStatus(CouponAttachmentStatus.ERROR);
+            log.error("Exception attaching note {} for group {}", coupon.getCode(), group.getId(), e);
+        } finally {
+            coupon.setProcessedAt(LocalDateTime.now());
             couponRepository.save(coupon);
+            deleteQuietly(filePath);
+        }
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void updateToErrorAndCleanup(Long couponId, Path filePath) {
+        couponRepository.findById(couponId).ifPresent(c -> {
+            c.setStatus(CouponAttachmentStatus.ERROR);
+            couponRepository.save(c);
+        });
+        deleteQuietly(filePath);
+    }
+
+    private void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
         }
     }
 
