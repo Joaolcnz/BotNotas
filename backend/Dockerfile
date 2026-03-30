@@ -10,5 +10,11 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+
+ENV COUPONS_STORAGE_BASE_DIR=/app/temp
+
+RUN mkdir -p /app/temp
+VOLUME /app/temp
+
 EXPOSE 8031
 ENTRYPOINT ["java", "-jar", "app.jar"]
