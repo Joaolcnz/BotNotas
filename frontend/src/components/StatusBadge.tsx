@@ -7,23 +7,23 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   PENDING: {
-    label: 'Pending',
+    label: 'Pendente',
     className: 'bg-warning/15 text-warning border-warning/20',
   },
-  PROCESSED: {
-    label: 'Processed',
+  ATTACHED: {
+    label: 'Anexado',
     className: 'bg-success/15 text-success border-success/20',
   },
   ERROR: {
-    label: 'Error',
+    label: 'Erro',
     className: 'bg-destructive/15 text-destructive border-destructive/20',
   },
   ACTIVE: {
-    label: 'Active',
+    label: 'Ativo',
     className: 'bg-success/15 text-success border-success/20',
   },
   DISABLED: {
-    label: 'Disabled',
+    label: 'Desativado',
     className: 'bg-muted-foreground/15 text-muted-foreground border-muted-foreground/20',
   },
 };

@@ -11,12 +11,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.zmaisz.automator.dto.coupon.CouponUploadDTO;
 import com.zmaisz.automator.model.coupon.Coupon;
 import com.zmaisz.automator.model.coupon.CouponAttachmentStatus;
 import com.zmaisz.automator.model.user.usergroup.UserGroup;
@@ -30,81 +37,182 @@ import lombok.extern.slf4j.Slf4j;
 public class VaadinAutomator implements FrotaFlexService {
 
     private final CouponRepository couponRepository;
+    private final String baseStorageDir;
 
-    public VaadinAutomator(CouponRepository couponRepository) {
+    public VaadinAutomator(CouponRepository couponRepository,
+            @Value("${coupons.storage.base-dir}") String baseStorageDir) {
         this.couponRepository = couponRepository;
+        this.baseStorageDir = baseStorageDir;
+    }
+
+    private final Map<Long, BlockingQueue<CouponJob>> queues = new ConcurrentHashMap<>();
+    private final Map<Long, ExecutorService> executors = new ConcurrentHashMap<>();
+
+    private record CouponJob(Long couponId, Path filePath) {}
+
+    @Override
+    public void enqueueFile(UserGroup group, Path filePath, Long couponId) {
+        Long groupId = group.getId();
+        queues.computeIfAbsent(groupId, k -> new LinkedBlockingQueue<>());
+        executors.computeIfAbsent(groupId, k -> {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            executor.submit(new GroupWorker(group, queues.get(groupId)));
+            return executor;
+        });
+
+        queues.get(groupId).offer(new CouponJob(couponId, filePath));
     }
 
     @Override
-    public void uploadCoupons(List<CouponUploadDTO> coupons, UserGroup group) {
-        if (coupons == null || coupons.isEmpty()) {
-            return;
-        }
+    public void pauseGroup(Long groupId) {
+        BlockingQueue<CouponJob> queue = queues.remove(groupId);
+        ExecutorService executor = executors.remove(groupId);
 
-        if (group == null) {
-            log.error("No group provided for uploading coupons");
-            updateAllToError(coupons);
-            return;
-        }
-        String username = group.getFrotaflexUser();
-        String password = group.getFrotaflexPassword();
-
-        if (username == null || password == null || username.isEmpty() || password.isEmpty()) {
-            log.error("Group {} missing FrotaFlex credentials", group.getId());
-            updateAllToError(coupons);
-            return;
-        }
-
-        try (FrotaFlexClient client = new FrotaFlexClient(username, password)) {
-            if (!client.login()) {
-                log.error("Failed to login to FrotaFlex for group {}", group.getId());
-                updateAllToError(coupons);
-                return;
-            }
-
-            for (CouponUploadDTO dto : coupons) {
-                Coupon coupon = dto.getCoupon();
-                Path filePath = dto.getFile().toPath();
-                String noteId = coupon.getCode();
-
-                try {
-                    boolean success = client.attachNote(noteId, filePath);
-                    if (success) {
-                        coupon.setStatus(CouponAttachmentStatus.ATTACHED);
-                    } else {
-                        coupon.setStatus(CouponAttachmentStatus.ERROR);
-                        log.warn("Failed to attach note {} for group {}", noteId, group.getId());
-                    }
-                } catch (Exception e) {
-                    coupon.setStatus(CouponAttachmentStatus.ERROR);
-                    log.error("Exception attaching note {} for group {}", noteId, group.getId(), e);
-                } finally {
-                    coupon.setProcessedAt(LocalDateTime.now());
-                    try {
-                        Files.deleteIfExists(filePath);
-                    } catch (IOException ignored) {
-                    }
-                }
-
-                couponRepository.save(coupon);
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        } catch (Exception e) {
-            log.error("Unexpected error during FrotaFlex batch upload", e);
-            updateAllToError(coupons);
+        if (queue != null && executor != null) {
+            queue.clear();
+            queue.offer(new CouponJob(-1L, null));
+            executor.shutdown();
         }
     }
 
-    private void updateAllToError(List<CouponUploadDTO> coupons) {
-        for (CouponUploadDTO dto : coupons) {
-            Coupon coupon = dto.getCoupon();
+    @Override
+    public void resumeGroup(UserGroup group) {
+        Long groupId = group.getId();
+        Path groupDir = Path.of(baseStorageDir, String.valueOf(groupId));
+        
+        if (!Files.exists(groupDir) || !Files.isDirectory(groupDir)) {
+            return;
+        }
+
+        List<Coupon> pendingCoupons = couponRepository.findByGroupIdAndStatus(groupId, CouponAttachmentStatus.PENDING);
+        
+        try (java.util.stream.Stream<Path> stream = Files.list(groupDir)) {
+            stream.forEach(filePath -> {
+                String filename = filePath.getFileName().toString();
+                int dotIndex = filename.lastIndexOf(".");
+                String code = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+                
+                pendingCoupons.stream()
+                        .filter(c -> c.getCode().equals(code))
+                        .findFirst()
+                        .ifPresent(c -> enqueueFile(group, filePath, c.getId()));
+            });
+        } catch (IOException e) {
+            log.error("Failed to read directory {} while resuming group {}", groupDir, groupId, e);
+        }
+    }
+
+    @Override
+    public String getGroupExecutorStatus(Long groupId) {
+        return executors.containsKey(groupId) && !executors.get(groupId).isShutdown() ? "EXECUTANDO" : "PAUSADO";
+    }
+
+    private class GroupWorker implements Runnable {
+        private final UserGroup group;
+        private final BlockingQueue<CouponJob> queue;
+
+        public GroupWorker(UserGroup group, BlockingQueue<CouponJob> queue) {
+            this.group = group;
+            this.queue = queue;
+        }
+
+        @Override
+        public void run() {
+            FrotaFlexClient client = null;
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
+                    // Wait for a job, timeout after 5 minutes to close connection
+                    CouponJob job = queue.poll(5, TimeUnit.MINUTES);
+
+                    if (job != null && job.couponId().equals(-1L)) {
+                        log.info("Worker gracefully paused for group {}", group.getId());
+                        break;
+                    }
+
+                    if (job == null) {
+                        // Idle timeout
+                        if (client != null) {
+                            client.close();
+                            client = null;
+                            log.info("Idle timeout for group {}, FrotaFlex connection closed.", group.getId());
+                        }
+                        continue;
+                    }
+
+                    // Process job
+                    if (client == null) {
+                        try {
+                            client = new FrotaFlexClient(group.getFrotaflexUser(), group.getFrotaflexPassword());
+                            if (!client.login()) {
+                                log.error("Failed to login for group {}", group.getId());
+                                updateToErrorAndCleanup(job.couponId, job.filePath);
+                                client.close();
+                                client = null;
+                                continue;
+                            }
+                        } catch (IOException e) {
+                            log.error("Network error during login for group {}", group.getId(), e);
+                            updateToErrorAndCleanup(job.couponId, job.filePath);
+                            if (client != null) client.close();
+                            client = null;
+                            continue;
+                        }
+                    }
+
+                    processSingleCoupon(client, job.couponId, job.filePath, group);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                if (client != null) client.close();
+            }
+        }
+    }
+
+    private void processSingleCoupon(FrotaFlexClient client, Long couponId, Path filePath, UserGroup group) {
+        Coupon coupon = couponRepository.findById(couponId).orElse(null);
+        if (coupon == null) {
+            log.warn("Coupon {} not found", couponId);
+            deleteQuietly(filePath);
+            return;
+        }
+
+        try {
+            boolean success = client.attachNote(coupon.getCode(), filePath);
+            if (success) {
+                coupon.setStatus(CouponAttachmentStatus.ATTACHED);
+            } else {
+                coupon.setStatus(CouponAttachmentStatus.ERROR);
+                log.warn("Failed to attach note {} for group {}", coupon.getCode(), group.getId());
+            }
+        } catch (Exception e) {
             coupon.setStatus(CouponAttachmentStatus.ERROR);
+            log.error("Exception attaching note {} for group {}", coupon.getCode(), group.getId(), e);
+        } finally {
+            coupon.setProcessedAt(LocalDateTime.now());
             couponRepository.save(coupon);
+            deleteQuietly(filePath);
+        }
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void updateToErrorAndCleanup(Long couponId, Path filePath) {
+        couponRepository.findById(couponId).ifPresent(c -> {
+            c.setStatus(CouponAttachmentStatus.ERROR);
+            couponRepository.save(c);
+        });
+        deleteQuietly(filePath);
+    }
+
+    private void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
         }
     }
 

@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, FolderOpen, Play, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
-import { uploadCoupons } from '@/api/coupons';
+import { Bot, FolderOpen, Play, Pause, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
+import { uploadCoupons, getExecutorStatus, pauseExecutor, resumeExecutor } from '@/api/coupons';
 import { useToast } from '@/hooks/use-toast';
 
 export default function BotPage() {
@@ -9,8 +9,19 @@ export default function BotPage() {
   const [dirSelected, setDirSelected] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [executorStatus, setExecutorStatus] = useState<'PAUSADO' | 'EXECUTANDO'>('PAUSADO');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await getExecutorStatus();
+        setExecutorStatus(res.status);
+      } catch (err) {}
+    };
+    fetchStatus();
+  }, []);
 
   const handleSelectDir = () => {
     fileInputRef.current?.click();
@@ -34,8 +45,16 @@ export default function BotPage() {
     setProgress({ current: 0, total: files.length });
 
     try {
-      await uploadCoupons(files);
-      setProgress({ current: files.length, total: files.length });
+      const batchSize = 10;
+      let processed = 0;
+      
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        await uploadCoupons(batch);
+        processed += batch.length;
+        setProgress({ current: processed, total: files.length });
+      }
+      
       toast({ title: 'Concluído', description: `${files.length} notas processadas com sucesso.` });
     } catch (error) {
       toast({ title: 'Erro', description: 'Falha ao processar as notas.', variant: 'destructive' });
@@ -45,13 +64,13 @@ export default function BotPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+    <div className="flex items-center justify-center py-6 md:py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg px-4"
       >
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-lg">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-4">
@@ -107,6 +126,38 @@ export default function BotPage() {
                 <>
                   <Play className="w-4 h-4" />
                   Iniciar
+                </>
+              )}
+            </button>
+
+            {/* Controle do Executor */}
+            <button
+              onClick={async () => {
+                try {
+                  if (executorStatus === 'EXECUTANDO') {
+                    await pauseExecutor();
+                    setExecutorStatus('PAUSADO');
+                    toast({ title: 'Executor Pausado', description: 'O robô foi pausado com sucesso.' });
+                  } else {
+                    await resumeExecutor();
+                    setExecutorStatus('EXECUTANDO');
+                    toast({ title: 'Executor Retomado', description: 'O robô voltou a processar.' });
+                  }
+                } catch (err) {
+                  toast({ title: 'Erro', description: 'Falha ao alterar status do executor.', variant: 'destructive' });
+                }
+              }}
+              className="w-full h-12 rounded-xl bg-accent border border-border text-foreground font-medium text-sm hover:bg-accent/80 transition-colors flex items-center justify-center gap-2"
+            >
+              {executorStatus === 'EXECUTANDO' ? (
+                <>
+                  <Pause className="w-4 h-4 text-warning" />
+                  Pausar Executor
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 text-success" />
+                  Retomar Executor
                 </>
               )}
             </button>
