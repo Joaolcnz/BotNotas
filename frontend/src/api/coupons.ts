@@ -19,14 +19,33 @@ export interface Coupon {
   processedAt: string | null;
 }
 
+export interface CouponFilterDTO {
+  uploadedAtStart?: string;
+  uploadedAtEnd?: string;
+  processedAtStart?: string;
+  processedAtEnd?: string;
+  status?: string;
+  code?: string;
+}
+
 export const getCoupons = async (
   page = 0,
   size = 20,
-  sort = 'uploadedAt,desc'
+  sort = 'uploadedAt,desc',
+  filter?: CouponFilterDTO
 ): Promise<SpringPage<Coupon>> => {
-  const { data } = await apiClient.get('/coupons', {
-    params: { page, size, sort },
-  });
+  const params: Record<string, any> = { page, size, sort };
+  
+  if (filter) {
+    if (filter.uploadedAtStart) params.uploadedAtStart = filter.uploadedAtStart;
+    if (filter.uploadedAtEnd) params.uploadedAtEnd = filter.uploadedAtEnd;
+    if (filter.processedAtStart) params.processedAtStart = filter.processedAtStart;
+    if (filter.processedAtEnd) params.processedAtEnd = filter.processedAtEnd;
+    if (filter.status) params.status = filter.status;
+    if (filter.code) params.code = filter.code;
+  }
+
+  const { data } = await apiClient.get('/coupons', { params });
   return data;
 };
 

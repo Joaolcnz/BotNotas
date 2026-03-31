@@ -1,15 +1,21 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { FileText, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCoupons, type Coupon, type SpringPage } from '@/api/coupons';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, RefreshCw, ChevronLeft, ChevronRight, Filter, FilterX } from 'lucide-react';
+import { getCoupons, type Coupon, type SpringPage, type CouponFilterDTO } from '@/api/coupons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/StatusBadge';
+import { DateTimeRangePicker } from '@/components/ui/date-time-range-picker';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export default function LogsPage() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
+  
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<CouponFilterDTO>({});
+  const [draftFilters, setDraftFilters] = useState<CouponFilterDTO>({});
 
   const {
     data,
@@ -17,9 +23,8 @@ export default function LogsPage() {
     refetch,
     isFetching,
   } = useQuery<SpringPage<Coupon>>({
-    queryKey: ['coupons', page, size],
-    queryFn: () => getCoupons(page, size, 'uploadedAt,desc'),
-    refetchInterval: 5000,
+    queryKey: ['coupons', page, size, filters],
+    queryFn: () => getCoupons(page, size, 'uploadedAt,desc', filters),
     placeholderData: (prev) => prev,
   });
 
@@ -39,10 +44,21 @@ export default function LogsPage() {
     });
   };
 
+  const applyFilters = () => {
+    setFilters(draftFilters);
+    setPage(0);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({});
+    setFilters({});
+    setPage(0);
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Logs</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -54,15 +70,117 @@ export default function LogsPage() {
             )}
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="h-9 px-4 rounded-lg bg-card border border-border text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-9 px-4 rounded-lg border text-sm transition-colors flex items-center gap-2 ${
+              showFilters || Object.keys(filters).length > 0
+                ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Filtros
+            {Object.keys(filters).length > 0 && (
+              <span className="ml-1 bg-background/20 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                {Object.keys(filters).length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="h-9 px-4 rounded-lg bg-card border border-border text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
+        </div>
       </div>
+
+      {/* Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-card border border-border rounded-xl p-5 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Código</label>
+                  <input
+                    type="text"
+                    className="w-full h-9 bg-background border border-border rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-shadow"
+                    value={draftFilters.code || ''}
+                    onChange={(e) => setDraftFilters({ ...draftFilters, code: e.target.value })}
+                    placeholder="Filtrar por código"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Status</label>
+                  <Select
+                    value={draftFilters.status || 'ALL'}
+                    onValueChange={(value) => setDraftFilters({ ...draftFilters, status: value === 'ALL' ? '' : value })}
+                  >
+                    <SelectTrigger className="w-full h-9">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">Todos</SelectItem>
+                      <SelectItem value="PENDING">Pendente</SelectItem>
+                      <SelectItem value="ATTACHED">Anexado</SelectItem>
+                      <SelectItem value="ERROR">Erro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Enviado em</label>
+                  <DateTimeRangePicker
+                    from={draftFilters.uploadedAtStart}
+                    to={draftFilters.uploadedAtEnd}
+                    onChange={({ from, to }) =>
+                      setDraftFilters({ ...draftFilters, uploadedAtStart: from, uploadedAtEnd: to })
+                    }
+                    placeholder="Filtrar envio"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Processado em</label>
+                  <DateTimeRangePicker
+                    from={draftFilters.processedAtStart}
+                    to={draftFilters.processedAtEnd}
+                    onChange={({ from, to }) =>
+                      setDraftFilters({ ...draftFilters, processedAtStart: from, processedAtEnd: to })
+                    }
+                    placeholder="Filtrar processamento"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border">
+                <button
+                  onClick={clearFilters}
+                  className="h-9 px-4 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                >
+                  <FilterX className="w-4 h-4" />
+                  Limpar
+                </button>
+                <button
+                  onClick={applyFilters}
+                  className="h-9 px-6 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+                >
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
