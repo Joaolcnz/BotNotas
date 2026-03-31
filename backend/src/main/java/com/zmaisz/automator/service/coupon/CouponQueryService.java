@@ -14,6 +14,8 @@ import com.zmaisz.automator.exception.coupon.CouponNotFoundException;
 import com.zmaisz.automator.model.coupon.Coupon;
 import com.zmaisz.automator.model.coupon.dto.CouponFilterDTO;
 import com.zmaisz.automator.repository.coupon.CouponRepository;
+import com.zmaisz.automator.model.user.User;
+import com.zmaisz.automator.model.user.UserContext;
 
 @Service
 public class CouponQueryService {
@@ -25,8 +27,16 @@ public class CouponQueryService {
     }
 
     public Page<Coupon> findAll(CouponFilterDTO filter, Pageable pageable) {
+        User currentUser = UserContext.getUser();
+        
         Specification<Coupon> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            
+            // Filtro obrigatório por grupo para isolamento de dados
+            if (currentUser != null && currentUser.getGroup() != null) {
+                predicates.add(cb.equal(root.get("group").get("id"), currentUser.getGroup().getId()));
+            }
+
             if (filter != null) {
                 if (filter.uploadedAtStart() != null) {
                     predicates.add(cb.greaterThanOrEqualTo(root.get("uploadedAt"), filter.uploadedAtStart()));
