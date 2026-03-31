@@ -15,6 +15,7 @@ import com.zmaisz.automator.exception.user.IncorrectPasswordException;
 import com.zmaisz.automator.exception.user.UserAlreadyExistsException;
 import com.zmaisz.automator.exception.user.UserNotFoundException;
 import com.zmaisz.automator.exception.user.usergrop.UserGroupAlreadyExistsException;
+import com.zmaisz.automator.exception.user.usergrop.UserGroupDisabledException;
 import com.zmaisz.automator.exception.user.usergrop.UserGroupIsNotEmptyException;
 import com.zmaisz.automator.exception.user.usergrop.UserGroupNotFoundException;
 
@@ -110,5 +111,14 @@ public class GlobalErrorHandler {
 				LocalDateTime.now(),
 				"O tamanho máximo de upload é de 100MB e 10 arquivos por upload.");
 		return new ResponseEntity<>(errorResponse, HttpStatus.CONTENT_TOO_LARGE);
+	}
+
+	@ExceptionHandler(UserGroupDisabledException.class)
+	public ResponseEntity<ErrorResponseDTO> handleUserGroupDisabledException(UserGroupDisabledException ex,
+			WebRequest request) {
+		ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+				LocalDateTime.now(),
+				ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
 	}
 }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.zmaisz.automator.dto.coupon.CouponUploadDTO;
+import com.zmaisz.automator.exception.user.usergrop.UserGroupDisabledException;
 import com.zmaisz.automator.model.coupon.Coupon;
 import com.zmaisz.automator.model.coupon.CouponAttachmentStatus;
 import com.zmaisz.automator.model.user.User;
@@ -38,6 +39,10 @@ public class UploadCouponUseCase {
         List<CouponUploadDTO> couponsToUpload = new ArrayList<>();
         User user = UserContext.getUser();
         UserGroup group = user.getGroup();
+
+        if (!group.isActive()) {
+            throw new UserGroupDisabledException("O grupo " + group.getName() + " está desabilitado.");
+        }
 
         Path groupDir = Path.of(baseStorageDir, String.valueOf(group.getId()));
         if (!Files.exists(groupDir)) {
