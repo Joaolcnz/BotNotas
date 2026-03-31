@@ -3,6 +3,8 @@ package com.zmaisz.automator.controller.coupon;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.zmaisz.automator.model.coupon.Coupon;
+import com.zmaisz.automator.model.coupon.dto.CouponFilterDTO;
 import com.zmaisz.automator.service.coupon.CouponQueryService;
 import com.zmaisz.automator.service.coupon.DeleteCouponUseCase;
 import com.zmaisz.automator.service.coupon.GetExecutorStatusUseCase;
@@ -58,8 +61,8 @@ public class CouponController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Coupon>> getAllCoupons() {
-        return ResponseEntity.status(HttpStatus.OK).body(couponQueryService.findAll());
+    public ResponseEntity<Page<Coupon>> getAllCoupons(CouponFilterDTO filter, Pageable pageable) {
+        return ResponseEntity.status(HttpStatus.OK).body(couponQueryService.findAll(filter, pageable));
     }
 
     @GetMapping("/{id}")

@@ -1,7 +1,51 @@
 import apiClient from './apiClient';
 
-export const getCoupons = async () => {
-  const { data } = await apiClient.get('/coupons');
+export interface SpringPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;       // current page (0-indexed)
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  status: 'PENDING' | 'ATTACHED' | 'ERROR';
+  group: { id: number; name: string };
+  uploadedAt: string;
+  processedAt: string | null;
+}
+
+export interface CouponFilterDTO {
+  uploadedAtStart?: string;
+  uploadedAtEnd?: string;
+  processedAtStart?: string;
+  processedAtEnd?: string;
+  status?: string;
+  code?: string;
+}
+
+export const getCoupons = async (
+  page = 0,
+  size = 20,
+  sort = 'uploadedAt,desc',
+  filter?: CouponFilterDTO
+): Promise<SpringPage<Coupon>> => {
+  const params: Record<string, any> = { page, size, sort };
+  
+  if (filter) {
+    if (filter.uploadedAtStart) params.uploadedAtStart = filter.uploadedAtStart;
+    if (filter.uploadedAtEnd) params.uploadedAtEnd = filter.uploadedAtEnd;
+    if (filter.processedAtStart) params.processedAtStart = filter.processedAtStart;
+    if (filter.processedAtEnd) params.processedAtEnd = filter.processedAtEnd;
+    if (filter.status) params.status = filter.status;
+    if (filter.code) params.code = filter.code;
+  }
+
+  const { data } = await apiClient.get('/coupons', { params });
   return data;
 };
 
