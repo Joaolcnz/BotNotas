@@ -1,7 +1,32 @@
 import apiClient from './apiClient';
 
-export const getCoupons = async () => {
-  const { data } = await apiClient.get('/coupons');
+export interface SpringPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;       // current page (0-indexed)
+  size: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface Coupon {
+  id: number;
+  code: string;
+  status: 'PENDING' | 'ATTACHED' | 'ERROR';
+  group: { id: number; name: string };
+  uploadedAt: string;
+  processedAt: string | null;
+}
+
+export const getCoupons = async (
+  page = 0,
+  size = 20,
+  sort = 'uploadedAt,desc'
+): Promise<SpringPage<Coupon>> => {
+  const { data } = await apiClient.get('/coupons', {
+    params: { page, size, sort },
+  });
   return data;
 };
 
