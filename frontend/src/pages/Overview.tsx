@@ -139,7 +139,7 @@ export default function OverviewPage() {
       ) : (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-card border border-border p-5 rounded-xl shadow-sm">
               <div className="flex flex-row items-center justify-between pb-2">
                 <p className="text-sm font-medium text-muted-foreground">Total de Cupons</p>
@@ -179,7 +179,7 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6">
             {/* Pie Chart */}
             <div className="bg-card border border-border p-5 rounded-xl shadow-sm col-span-1 flex flex-col">
               <h3 className="text-lg font-semibold mb-4">Distribuição de Status</h3>
@@ -212,7 +212,7 @@ export default function OverviewPage() {
             </div>
 
             {/* Bar Chart */}
-            <div className="bg-card border border-border p-5 rounded-xl shadow-sm col-span-1 lg:col-span-2 flex flex-col">
+            <div className="bg-card border border-border p-5 rounded-xl shadow-sm lg:col-span-2 flex flex-col">
               <h3 className="text-lg font-semibold mb-4">Volume por Dia de Envio</h3>
               <div className="flex-1 w-full min-h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
