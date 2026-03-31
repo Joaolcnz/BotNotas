@@ -10,7 +10,7 @@ interface GroupData {
   id: string;
   name: string;
   locality: string;
-  status: string;
+  active: boolean;
 }
 
 export default function GroupsPage() {
@@ -122,69 +122,68 @@ export default function GroupsPage() {
         ) : (
           <div className="overflow-x-auto text-sm">
             <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                {['ID', 'Name', 'Locality', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => (
-                <tr key={group.id} className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors">
-                  <td className="px-6 py-3 text-sm text-muted-foreground font-mono">{group.id}</td>
-                  <td className="px-6 py-3 text-sm text-foreground font-medium">{group.name}</td>
-                  <td className="px-6 py-3 text-sm text-muted-foreground">{group.locality}</td>
-                  <td className="px-6 py-3"><StatusBadge status={group.status} /></td>
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => openEdit(group)}
-                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {deleteConfirm === group.id ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => deleteMutation.mutate(group.id)}
-                            disabled={deleteMutation.isPending}
-                            className="px-2 py-1 rounded text-xs bg-destructive text-destructive-foreground hover:opacity-90 disabled:opacity-50"
-                          >
-                            {deleteMutation.isPending ? 'Excluindo...' : 'Confirmar'}
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
+              <thead>
+                <tr className="border-b border-border">
+                  {['ID', 'Name', 'Locality', 'Status', 'Actions'].map((h) => (
+                    <th key={h} className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((group) => (
+                  <tr key={group.id} className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors">
+                    <td className="px-6 py-3 text-sm text-muted-foreground font-mono">{group.id}</td>
+                    <td className="px-6 py-3 text-sm text-foreground font-medium">{group.name}</td>
+                    <td className="px-6 py-3 text-sm text-muted-foreground">{group.locality}</td>
+                    <td className="px-6 py-3"><StatusBadge status={group.active ? 'ACTIVE' : 'DISABLED'} /></td>
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => setDeleteConfirm(group.id)}
-                          className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          onClick={() => openEdit(group)}
+                          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => toggleMutation.mutate({ id: group.id, active: group.status === 'ACTIVE' })}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-2 ${
-                          group.status === 'ACTIVE'
+                        {deleteConfirm === group.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => deleteMutation.mutate(group.id)}
+                              disabled={deleteMutation.isPending}
+                              className="px-2 py-1 rounded text-xs bg-destructive text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+                            >
+                              {deleteMutation.isPending ? 'Excluindo...' : 'Confirmar'}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(null)}
+                              className="px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirm(group.id)}
+                            className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => toggleMutation.mutate({ id: group.id, active: group.active })}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ml-2 ${group.active
                             ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
                             : 'bg-success/10 text-success hover:bg-success/20'
-                        }`}
-                      >
-                        {group.status === 'ACTIVE' ? 'Desativar' : 'Ativar'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                            }`}
+                        >
+                          {group.active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
