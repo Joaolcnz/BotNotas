@@ -1,10 +1,11 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bot, FileText, LogOut } from 'lucide-react';
+import { Bot, FileText, LogOut, LayoutDashboard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { to: '/overview', label: 'Overview', icon: LayoutDashboard },
   { to: '/bot', label: 'Bot', icon: Bot },
   { to: '/logs', label: 'Logs', icon: FileText },
 ];

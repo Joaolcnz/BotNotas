@@ -11,6 +11,7 @@ import UsersPage from "@/pages/Users";
 import GroupsPage from "@/pages/Groups";
 import NotFound from "@/pages/NotFound";
 import AdminAuth from "@/pages/AdminAuth";
+import Overview from "@/pages/Overview";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<MainLayout />}>
+            <Route path="/overview" element={<Overview />} />
             <Route path="/bot" element={<BotPage />} />
             <Route path="/logs" element={<LogsPage />} />
             <Route path="/admin-auth" element={<AdminAuth />} />
@@ -30,7 +32,7 @@ const App = () => (
               <Route path="/groups" element={<GroupsPage />} />
             </Route>
           </Route>
-          <Route path="/" element={<Navigate to="/bot" replace />} />
+          <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
