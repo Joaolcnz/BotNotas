@@ -81,9 +81,7 @@ export default function LogsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">ID</th>
                     <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Código</th>
-                    <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Grupo</th>
                     <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Status</th>
                     <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Enviado em</th>
                     <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">Processado em</th>
@@ -98,9 +96,7 @@ export default function LogsPage() {
                       transition={{ delay: i * 0.02 }}
                       className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
                     >
-                      <td className="px-6 py-3 text-sm text-muted-foreground font-mono text-center">{coupon.id}</td>
                       <td className="px-6 py-3 text-sm text-foreground font-medium text-center">{coupon.code}</td>
-                      <td className="px-6 py-3 text-sm text-muted-foreground text-center">{coupon.group?.name ?? '-'}</td>
                       <td className="px-6 py-3 text-center"><StatusBadge status={coupon.status} /></td>
                       <td className="px-6 py-3 text-sm text-muted-foreground whitespace-nowrap text-center">{formatDateTime(coupon.uploadedAt)}</td>
                       <td className="px-6 py-3 text-sm text-muted-foreground whitespace-nowrap text-center">{formatDateTime(coupon.processedAt)}</td>
