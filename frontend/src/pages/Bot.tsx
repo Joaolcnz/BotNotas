@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, FolderOpen, Play, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
-import { uploadCoupons } from '@/api/coupons';
+import { Bot, FolderOpen, Play, Pause, ExternalLink, CheckCircle, Loader2 } from 'lucide-react';
+import { uploadCoupons, getExecutorStatus, pauseExecutor, resumeExecutor } from '@/api/coupons';
 import { useToast } from '@/hooks/use-toast';
 
 export default function BotPage() {
@@ -9,8 +9,19 @@ export default function BotPage() {
   const [dirSelected, setDirSelected] = useState(false);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [executorStatus, setExecutorStatus] = useState<'PAUSADO' | 'EXECUTANDO'>('PAUSADO');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await getExecutorStatus();
+        setExecutorStatus(res.status);
+      } catch (err) {}
+    };
+    fetchStatus();
+  }, []);
 
   const handleSelectDir = () => {
     fileInputRef.current?.click();
@@ -115,6 +126,38 @@ export default function BotPage() {
                 <>
                   <Play className="w-4 h-4" />
                   Iniciar
+                </>
+              )}
+            </button>
+
+            {/* Controle do Executor */}
+            <button
+              onClick={async () => {
+                try {
+                  if (executorStatus === 'EXECUTANDO') {
+                    await pauseExecutor();
+                    setExecutorStatus('PAUSADO');
+                    toast({ title: 'Executor Pausado', description: 'O robô foi pausado com sucesso.' });
+                  } else {
+                    await resumeExecutor();
+                    setExecutorStatus('EXECUTANDO');
+                    toast({ title: 'Executor Retomado', description: 'O robô voltou a processar.' });
+                  }
+                } catch (err) {
+                  toast({ title: 'Erro', description: 'Falha ao alterar status do executor.', variant: 'destructive' });
+                }
+              }}
+              className="w-full h-12 rounded-xl bg-accent border border-border text-foreground font-medium text-sm hover:bg-accent/80 transition-colors flex items-center justify-center gap-2"
+            >
+              {executorStatus === 'EXECUTANDO' ? (
+                <>
+                  <Pause className="w-4 h-4 text-warning" />
+                  Pausar Executor
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 text-success" />
+                  Retomar Executor
                 </>
               )}
             </button>

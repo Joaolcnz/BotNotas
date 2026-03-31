@@ -15,3 +15,16 @@ export const uploadCoupons = async (files: File[]) => {
   });
   return data;
 };
+
+export const getExecutorStatus = async () => {
+  const { data } = await apiClient.get('/coupons/executor/status');
+  return data;
+};
+
+export const pauseExecutor = async () => {
+  await apiClient.post('/coupons/executor/pause');
+};
+
+export const resumeExecutor = async () => {
+  await apiClient.post('/coupons/executor/resume');
+};
