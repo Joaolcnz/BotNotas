@@ -1,7 +1,7 @@
 package com.zmaisz.automator.service.coupon;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.zmaisz.automator.exception.coupon.CouponNotFoundException;
@@ -17,8 +17,8 @@ public class CouponQueryService {
         this.couponRepository = couponRepository;
     }
 
-    public List<Coupon> findAll() {
-        return couponRepository.findAll();
+    public Page<Coupon> findAll(Pageable pageable) {
+        return couponRepository.findAll(pageable);
     }
 
     public Coupon findById(Long id) {

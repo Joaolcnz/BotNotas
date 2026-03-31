@@ -3,6 +3,8 @@ package com.zmaisz.automator.controller.coupon;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -58,8 +60,8 @@ public class CouponController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Coupon>> getAllCoupons() {
-        return ResponseEntity.status(HttpStatus.OK).body(couponQueryService.findAll());
+    public ResponseEntity<Page<Coupon>> getAllCoupons(Pageable pageable) {
+        return ResponseEntity.status(HttpStatus.OK).body(couponQueryService.findAll(pageable));
     }
 
     @GetMapping("/{id}")
