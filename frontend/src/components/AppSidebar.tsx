@@ -31,7 +31,7 @@ export function AppSidebar() {
       initial={false}
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="h-screen bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 z-40"
+      className="hidden lg:flex h-screen bg-sidebar border-r border-sidebar-border flex-col fixed left-0 top-0 z-40"
     >
       {/* Toggle Button */}
       <button

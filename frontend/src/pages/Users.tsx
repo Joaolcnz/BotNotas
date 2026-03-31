@@ -107,14 +107,14 @@ export default function UsersPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Usuários</h1>
           <p className="text-sm text-muted-foreground mt-1">Gerencie os usuários do sistema</p>
         </div>
         <button
           onClick={openCreate}
-          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+          className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Novo Usuário
@@ -132,7 +132,8 @@ export default function UsersPage() {
             <p className="text-sm">Nenhum usuário encontrado</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto text-sm">
+            <table className="w-full">
             <thead>
               <tr className="border-b border-border">
                 {['ID', 'Name', 'Email', 'Group', 'Actions'].map((h) => (
@@ -178,6 +179,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+        </div>
         )}
       </div>
 
@@ -196,7 +198,7 @@ export default function UsersPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl"
+              className="w-full max-w-md bg-card border border-border rounded-2xl p-6 md:p-8 shadow-2xl mx-4"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-foreground">

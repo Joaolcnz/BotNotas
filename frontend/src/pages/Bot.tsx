@@ -64,13 +64,13 @@ export default function BotPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+    <div className="flex items-center justify-center py-6 md:py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-lg px-4"
       >
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-lg">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-primary/15 flex items-center justify-center mx-auto mb-4">
