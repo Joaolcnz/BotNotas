@@ -84,30 +84,25 @@ export default function OverviewPage() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Métricas e insights de processamento de notas
-            {totalElements > 0 && (
-              <span className="ml-2 text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
-                {totalElements} {totalElements === 1 ? 'registro' : 'registros'} analisados
-              </span>
-            )}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Overview</h1>
+          <p className="text-[15px] text-muted-foreground">
+            Métricas e insights de processamento de notas.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`h-9 px-4 rounded-lg border text-sm transition-colors flex items-center gap-2 ${showFilters || Object.keys(filters).length > 0
-              ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/90'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground'
+            className={`h-10 px-4 rounded-md border text-sm font-medium transition-colors flex items-center gap-2 ${showFilters || Object.keys(filters).length > 0
+              ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+              : 'bg-card border-border text-foreground hover:bg-accent hover:text-accent-foreground shadow-sm'
               }`}
           >
             <Filter className="w-4 h-4" />
             Filtros
             {Object.keys(filters).length > 0 && (
-              <span className="ml-1 bg-background/20 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="ml-1 bg-background/20 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
                 {Object.keys(filters).length}
               </span>
             )}
@@ -115,7 +110,7 @@ export default function OverviewPage() {
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-9 px-4 rounded-lg bg-card border border-border text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="h-10 px-4 rounded-md bg-card border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar

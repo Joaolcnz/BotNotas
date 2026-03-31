@@ -6,7 +6,7 @@ import { MainLayout } from "@/layouts/MainLayout";
 import { AdminRoute } from "@/components/AdminRoute";
 import Login from "@/pages/Login";
 import BotPage from "@/pages/Bot";
-import LogsPage from "@/pages/Logs";
+import CouponsPage from "@/pages/Coupons";
 import UsersPage from "@/pages/Users";
 import GroupsPage from "@/pages/Groups";
 import NotFound from "@/pages/NotFound";
@@ -25,7 +25,7 @@ const App = () => (
           <Route element={<MainLayout />}>
             <Route path="/overview" element={<Overview />} />
             <Route path="/bot" element={<BotPage />} />
-            <Route path="/logs" element={<LogsPage />} />
+            <Route path="/cupons" element={<CouponsPage />} />
             <Route path="/admin-auth" element={<AdminAuth />} />
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<UsersPage />} />

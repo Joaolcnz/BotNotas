@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, RefreshCw, ChevronLeft, ChevronRight, Filter, FilterX } from 'lucide-react';
-import { getCoupons, type Coupon, type SpringPage, type CouponFilterDTO } from '@/api/coupons';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { StatusBadge } from '@/components/StatusBadge';
+import { getCoupons, type Coupon, type CouponFilterDTO, type SpringPage } from '@/api/coupons';
 import { CouponFiltersPanel } from '@/components/CouponFiltersPanel';
+import { StatusBadge } from '@/components/StatusBadge';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, FileText, Filter, RefreshCw } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from 'react';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-export default function LogsPage() {
+export default function CouponsPage() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
-  
+
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<CouponFilterDTO>({});
   const [draftFilters, setDraftFilters] = useState<CouponFilterDTO>({});
@@ -58,31 +58,25 @@ export default function LogsPage() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Logs</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Histórico de processamento de cupons
-            {totalElements > 0 && (
-              <span className="ml-2 text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full">
-                {totalElements} {totalElements === 1 ? 'registro' : 'registros'}
-              </span>
-            )}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Cupons</h1>
+          <p className="text-[15px] text-muted-foreground">
+            Acompanhe o histórico de processamento.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`h-9 px-4 rounded-lg border text-sm transition-colors flex items-center gap-2 ${
-              showFilters || Object.keys(filters).length > 0
-                ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-card border-border text-muted-foreground hover:text-foreground'
-            }`}
+            className={`h-10 px-4 rounded-md border text-sm font-medium transition-colors flex items-center gap-2 ${showFilters || Object.keys(filters).length > 0
+              ? 'bg-primary border-primary text-primary-foreground hover:bg-primary/90 shadow-sm'
+              : 'bg-card border-border text-foreground hover:bg-accent hover:text-accent-foreground shadow-sm'
+              }`}
           >
             <Filter className="w-4 h-4" />
             Filtros
             {Object.keys(filters).length > 0 && (
-              <span className="ml-1 bg-background/20 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="ml-1 bg-background/20 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
                 {Object.keys(filters).length}
               </span>
             )}
@@ -90,7 +84,7 @@ export default function LogsPage() {
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-9 px-4 rounded-lg bg-card border border-border text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 disabled:opacity-50"
+            className="h-10 px-4 rounded-md bg-card border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
             Atualizar
@@ -153,15 +147,21 @@ export default function LogsPage() {
             <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-card/50">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>Linhas por página:</span>
-                <select
-                  value={size}
-                  onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }}
-                  className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                <Select
+                  value={size.toString()}
+                  onValueChange={(v) => { setSize(Number(v)); setPage(0); }}
                 >
-                  {PAGE_SIZE_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-8 w-[70px] bg-background">
+                    <SelectValue placeholder={size.toString()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s.toString()}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
