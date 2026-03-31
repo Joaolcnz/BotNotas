@@ -2,10 +2,6 @@ package com.zmaisz.automator.model.coupon;
 
 import java.time.LocalDateTime;
 
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.ParamDef;
-
 import com.zmaisz.automator.model.user.usergroup.UserGroup;
 
 import jakarta.persistence.Column;
@@ -29,8 +25,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@FilterDef(name = "groupFilter", parameters = @ParamDef(name = "group", type = Long.class))
-@Filter(name = "groupFilter", condition = "group_id = :group")
 public class Coupon {
 
     @Id
