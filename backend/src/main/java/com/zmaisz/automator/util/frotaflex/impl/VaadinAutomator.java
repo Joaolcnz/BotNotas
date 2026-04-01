@@ -48,7 +48,8 @@ public class VaadinAutomator implements FrotaFlexService {
     private final Map<Long, BlockingQueue<CouponJob>> queues = new ConcurrentHashMap<>();
     private final Map<Long, ExecutorService> executors = new ConcurrentHashMap<>();
 
-    private record CouponJob(Long couponId, Path filePath) {}
+    private record CouponJob(Long couponId, Path filePath) {
+    }
 
     @Override
     public void enqueueFile(UserGroup group, Path filePath, Long couponId) {
@@ -79,19 +80,19 @@ public class VaadinAutomator implements FrotaFlexService {
     public void resumeGroup(UserGroup group) {
         Long groupId = group.getId();
         Path groupDir = Path.of(baseStorageDir, String.valueOf(groupId));
-        
+
         if (!Files.exists(groupDir) || !Files.isDirectory(groupDir)) {
             return;
         }
 
         List<Coupon> pendingCoupons = couponRepository.findByGroupIdAndStatus(groupId, CouponAttachmentStatus.PENDING);
-        
+
         try (java.util.stream.Stream<Path> stream = Files.list(groupDir)) {
             stream.forEach(filePath -> {
                 String filename = filePath.getFileName().toString();
                 int dotIndex = filename.lastIndexOf(".");
                 String code = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
-                
+
                 pendingCoupons.stream()
                         .filter(c -> c.getCode().equals(code))
                         .findFirst()
@@ -121,8 +122,7 @@ public class VaadinAutomator implements FrotaFlexService {
             FrotaFlexClient client = null;
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    // Wait for a job, timeout after 5 minutes to close connection
-                    CouponJob job = queue.poll(5, TimeUnit.MINUTES);
+                    CouponJob job = queue.poll(30, TimeUnit.SECONDS);
 
                     if (job != null && job.couponId().equals(-1L)) {
                         log.info("Worker gracefully paused for group {}", group.getId());
@@ -130,16 +130,18 @@ public class VaadinAutomator implements FrotaFlexService {
                     }
 
                     if (job == null) {
-                        // Idle timeout
+                        log.info("Idle timeout for group {}, shutting down worker.", group.getId());
+                        queues.remove(group.getId());
+                        ExecutorService executor = executors.remove(group.getId());
+                        if (executor != null) {
+                            executor.shutdown();
+                        }
                         if (client != null) {
                             client.close();
-                            client = null;
-                            log.info("Idle timeout for group {}, FrotaFlex connection closed.", group.getId());
                         }
-                        continue;
+                        break;
                     }
 
-                    // Process job
                     if (client == null) {
                         try {
                             client = new FrotaFlexClient(group.getFrotaflexUser(), group.getFrotaflexPassword());
@@ -153,7 +155,8 @@ public class VaadinAutomator implements FrotaFlexService {
                         } catch (IOException e) {
                             log.error("Network error during login for group {}", group.getId(), e);
                             updateToErrorAndCleanup(job.couponId, job.filePath);
-                            if (client != null) client.close();
+                            if (client != null)
+                                client.close();
                             client = null;
                             continue;
                         }
@@ -164,7 +167,8 @@ public class VaadinAutomator implements FrotaFlexService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } finally {
-                if (client != null) client.close();
+                if (client != null)
+                    client.close();
             }
         }
     }
