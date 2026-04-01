@@ -122,8 +122,7 @@ public class VaadinAutomator implements FrotaFlexService {
             FrotaFlexClient client = null;
             try {
                 while (!Thread.currentThread().isInterrupted()) {
-                    // Wait for a job, timeout after 5 minutes to close connection
-                    CouponJob job = queue.poll(5, TimeUnit.MINUTES);
+                    CouponJob job = queue.poll(30, TimeUnit.SECONDS);
 
                     if (job != null && job.couponId().equals(-1L)) {
                         log.info("Worker gracefully paused for group {}", group.getId());
@@ -131,7 +130,6 @@ public class VaadinAutomator implements FrotaFlexService {
                     }
 
                     if (job == null) {
-                        // Idle timeout - shutdown worker
                         log.info("Idle timeout for group {}, shutting down worker.", group.getId());
                         queues.remove(group.getId());
                         ExecutorService executor = executors.remove(group.getId());
@@ -144,7 +142,6 @@ public class VaadinAutomator implements FrotaFlexService {
                         break;
                     }
 
-                    // Process job
                     if (client == null) {
                         try {
                             client = new FrotaFlexClient(group.getFrotaflexUser(), group.getFrotaflexPassword());
