@@ -10,7 +10,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins("https://bot.astraviontech.com.br", "http://localhost:8030", "http://localhost:8090")
+                .allowedOrigins("https://bot.astraviontech.com.br", "http://localhost:8030", "http://localhost:8032")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("X-USER-ID");
