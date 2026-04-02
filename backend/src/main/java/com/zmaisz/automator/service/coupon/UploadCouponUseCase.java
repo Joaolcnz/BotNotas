@@ -55,10 +55,25 @@ public class UploadCouponUseCase {
                 continue;
             }
 
-            Path filePath = groupDir.resolve(originalFilename);
-            multipartFile.transferTo(filePath.toFile());
-
             String code = extractCode(originalFilename);
+
+            // Skip if coupon already exists and is ATTACHED or PENDING
+            List<Coupon> existingCoupons = couponRepository.findByCodeAndGroupId(code, group.getId());
+            boolean shouldSkip = existingCoupons.stream()
+                    .anyMatch(c -> c.getStatus() == CouponAttachmentStatus.ATTACHED
+                            || c.getStatus() == CouponAttachmentStatus.PENDING);
+
+            if (shouldSkip) {
+                continue;
+            }
+
+            String extension = originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf("."))
+                    : "";
+            String uniqueFilename = code + "__" + System.currentTimeMillis() + extension;
+
+            Path filePath = groupDir.resolve(uniqueFilename);
+            multipartFile.transferTo(filePath.toFile());
 
             Coupon coupon = new Coupon();
             coupon.setCode(code);

@@ -13,5 +13,6 @@ import com.zmaisz.automator.model.coupon.CouponAttachmentStatus;
 public interface CouponRepository extends JpaRepository<Coupon, Long>, JpaSpecificationExecutor<Coupon> {
 
     List<Coupon> findByGroupIdAndStatus(Long groupId, CouponAttachmentStatus status);
+    List<Coupon> findByCodeAndGroupId(String code, Long groupId);
 
 }

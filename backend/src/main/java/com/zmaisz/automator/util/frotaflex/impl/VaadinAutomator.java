@@ -91,7 +91,12 @@ public class VaadinAutomator implements FrotaFlexService {
             stream.forEach(filePath -> {
                 String filename = filePath.getFileName().toString();
                 int dotIndex = filename.lastIndexOf(".");
-                String code = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+                String nameWithoutExt = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
+
+                // Extract code from unique filename format: code__timestamp
+                String code = nameWithoutExt.contains("__")
+                        ? nameWithoutExt.substring(0, nameWithoutExt.lastIndexOf("__"))
+                        : nameWithoutExt;
 
                 pendingCoupons.stream()
                         .filter(c -> c.getCode().equals(code))
@@ -162,7 +167,15 @@ public class VaadinAutomator implements FrotaFlexService {
                         }
                     }
 
-                    processSingleCoupon(client, job.couponId, job.filePath, group);
+                    try {
+                        processSingleCoupon(client, job.couponId, job.filePath, group);
+                    } catch (Exception e) {
+                        log.error("Critical error in processSingleCoupon for group {}. Resetting client.", group.getId(), e);
+                        if (client != null) {
+                            client.close();
+                            client = null;
+                        }
+                    }
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -173,11 +186,20 @@ public class VaadinAutomator implements FrotaFlexService {
         }
     }
 
-    private void processSingleCoupon(FrotaFlexClient client, Long couponId, Path filePath, UserGroup group) {
+    private void processSingleCoupon(FrotaFlexClient client, Long couponId, Path filePath, UserGroup group)
+            throws Exception {
         Coupon coupon = couponRepository.findById(couponId).orElse(null);
         if (coupon == null) {
             log.warn("Coupon {} not found", couponId);
             deleteQuietly(filePath);
+            return;
+        }
+
+        if (!Files.exists(filePath)) {
+            log.error("File {} not found for coupon {} during processing", filePath, coupon.getCode());
+            coupon.setStatus(CouponAttachmentStatus.ERROR);
+            coupon.setProcessedAt(LocalDateTime.now());
+            couponRepository.save(coupon);
             return;
         }
 
@@ -192,6 +214,7 @@ public class VaadinAutomator implements FrotaFlexService {
         } catch (Exception e) {
             coupon.setStatus(CouponAttachmentStatus.ERROR);
             log.error("Exception attaching note {} for group {}", coupon.getCode(), group.getId(), e);
+            throw e; // Rethrow to reset client in the worker loop
         } finally {
             coupon.setProcessedAt(LocalDateTime.now());
             couponRepository.save(coupon);
