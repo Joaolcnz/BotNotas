@@ -59,6 +59,7 @@ public class UploadCouponUseCase {
 
             // Skip if coupon already exists and is ATTACHED or PENDING
             List<Coupon> existingCoupons = couponRepository.findByCodeAndGroupId(code, group.getId());
+
             boolean shouldSkip = existingCoupons.stream()
                     .anyMatch(c -> c.getStatus() == CouponAttachmentStatus.ATTACHED
                             || c.getStatus() == CouponAttachmentStatus.PENDING);
@@ -75,7 +76,7 @@ public class UploadCouponUseCase {
             Path filePath = groupDir.resolve(uniqueFilename);
             multipartFile.transferTo(filePath.toFile());
 
-            Coupon coupon = new Coupon();
+            Coupon coupon = existingCoupons.stream().findFirst().orElse(new Coupon());
             coupon.setCode(code);
             coupon.setStatus(CouponAttachmentStatus.PENDING);
             coupon.setGroup(user.getGroup());
