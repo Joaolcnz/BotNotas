@@ -21,6 +21,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd BotNotas/
-            git pull origin develop
+            git fetch origin
+            git reset --hard origin/develop
             docker compose down
             docker compose up -d --build
