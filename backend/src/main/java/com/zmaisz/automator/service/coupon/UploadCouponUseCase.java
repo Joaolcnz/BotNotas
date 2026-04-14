@@ -76,7 +76,11 @@ public class UploadCouponUseCase {
             Path filePath = groupDir.resolve(uniqueFilename);
             multipartFile.transferTo(filePath.toFile());
 
-            Coupon coupon = existingCoupons.stream().findFirst().orElse(new Coupon());
+            Coupon coupon = existingCoupons.stream()
+                    .filter(c -> c.getStatus() == CouponAttachmentStatus.ERROR)
+                    .findFirst()
+                    .orElseGet(Coupon::new);
+
             coupon.setCode(code);
             coupon.setStatus(CouponAttachmentStatus.PENDING);
             coupon.setGroup(user.getGroup());
